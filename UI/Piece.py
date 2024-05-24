@@ -1,10 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QLabel
-from PyQt5.QtCore import QPoint, pyqtSignal
+from PyQt5.QtCore import Qt, QPoint, pyqtSignal
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt
-import chess
-
-from enum import Enum
 
 class PieceType:
     WHITE_KING = 0
@@ -22,6 +18,7 @@ class PieceType:
 
 class Piece(QWidget):
     doMove = pyqtSignal(QWidget)
+    pieceClicked = pyqtSignal(QWidget)
 
     def __init__(self, piece_type, parent=None):
         super().__init__(parent)
@@ -60,10 +57,16 @@ class Piece(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.oldPos = event.pos()
+            self.pieceClicked.emit(self)
+            print(f"Piece clicked: {self.type}")
 
     def mouseMoveEvent(self, event):
         delta = event.pos() - self.oldPos
         self.move(self.pos() + delta)
 
     def mouseReleaseEvent(self, event):
+        new_x = (self.pos().x() + 50) // 100
+        new_y = (self.pos().y() + 50) // 100
+        self.move(new_x * 100, new_y * 100)
         self.doMove.emit(self)
+        print(f"Piece moved: {self.type}")

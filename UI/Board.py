@@ -1,8 +1,7 @@
-from PyQt5.QtWidgets import QWidget , QLabel
+from PyQt5.QtWidgets import QWidget, QLabel
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QColor
-from UI.Piece import Piece, PieceType
 import chess
+from UI.Piece import Piece, PieceType
 
 
 class Board(QWidget):
@@ -11,11 +10,10 @@ class Board(QWidget):
         self.cells = [[None for _ in range(8)] for _ in range(8)]
         self.pieces = [[None for _ in range(8)] for _ in range(8)]
         self.initCells()
-        #self.parseFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
         self.addNumeration()
         self.board = chess.Board()
         self.setStartPosition()
-
+        self.oldPos = QPoint(0, 0)
 
     def createCell(self, row, column):
         cell = QWidget(self)
@@ -34,25 +32,87 @@ class Board(QWidget):
     def createPiece(self, piece_type):
         piece = Piece(piece_type, self)
         piece.doMove.connect(self.handleMove)
+        piece.pieceClicked.connect(self.showPossibleMoves)
         return piece
 
     def handleMove(self, piece):
-        x = (piece.pos().x() + 50) // 100
-        y = (piece.pos().y() + 50) // 100
-        cell = self.cells[x][y]
-        piece.setGeometry(cell.x(), cell.y(), 100, 100)
+        old_x = (self.oldPos.x())
+        old_y = (self.oldPos.y())
+        new_x = (piece.pos().x() + 50) // 100
+        new_y = (piece.pos().y() + 50) // 100
+        print("old_x = ",old_x)
+        print("old_y = ",old_y)
+        print("new_x = ", new_x)
+        print("new_y = ", new_y)
+
+        if old_x != new_x or old_y != new_y:
+            move = chess.Move(
+                chess.square(old_x, 7 - old_y),
+                chess.square(new_x, 7 - new_y)
+            )
+            print(f"Attempting move: {move}")
+            if move in self.board.legal_moves:
+                print("Move is legal")
+                self.board.push(move)
+                self.board.set_fen(self.board.fen())
+                self.pieces[old_x][old_y] = None
+                self.pieces[new_x][new_y] = piece
+                piece.setGeometry(self.cells[new_x][new_y].geometry())
+            else:
+                print("Move is illegal")
+                piece.setGeometry(self.cells[old_x][old_y].geometry())
+
+        self.clearHighlights()
+        print(f"Piece clicked: {piece.type} at ({old_x}, {old_y})")
+        print(f"Piece moved: {piece.type} to ({new_x}, {new_y})")
+
+        print("Current board state:")
+        print(self.board)
+
+    def showPossibleMoves(self, piece):
+        self.clearHighlights()
+        piece_position = (piece.pos().x() // 100, piece.pos().y() // 100)
+        self.oldPos = QPoint(piece_position[0], piece_position[1])
+        square = chess.square(piece_position[0], 7 - piece_position[1])
+        legal_moves = list(self.board.legal_moves)
+        print(f"Showing moves for piece at {piece_position} (square: {square}) of type {piece.type}")
+        possible_moves_found = False
+        for move in legal_moves:
+            if move.from_square == square:
+                to_square = move.to_square
+                row = chess.square_file(to_square)
+                column = 7 - chess.square_rank(to_square)
+                self.highlightCell(row, column)
+                print(f"Possible move to: ({row}, {column})")
+                possible_moves_found = True
+        if not possible_moves_found:
+            print("No possible moves found")
+
+    def highlightCell(self, row, column):
+        cell = self.cells[row][column]
+        cell.setStyleSheet("background-color: rgb(50, 205, 50)")
+
+    def clearHighlights(self):
+        for i in range(8):
+            for j in range(8):
+                if (i + j) % 2 == 0:
+                    self.cells[i][j].setStyleSheet("background-color: rgb(192, 192, 192)")
+                else:
+                    self.cells[i][j].setStyleSheet("background-color: rgb(64, 64, 64)")
 
     def parseFen(self, fen):
-        for i in range(8):
-            index = fen.find("/")
-            left = fen[:index] if index != -1 else fen
-            fen = fen[index + 1:] if index != -1 else ""
-            for j in range(len(left)):
-                if not left[j].isdigit():
-                    piece = self.createPiece(self.parseFenToPieceType(left[j]))
-                    point = self.cells[j][i].pos()
+        fen_rows = fen.split("/")
+        for row in range(8):
+            col = 0
+            for char in fen_rows[row]:
+                if char.isdigit():
+                    col += int(char)
+                else:
+                    piece = self.createPiece(self.parseFenToPieceType(char))
+                    point = self.cells[col][row].pos()
                     piece.setGeometry(point.x(), point.y(), 100, 100)
-                    self.pieces[j][i] = piece
+                    self.pieces[col][row] = piece
+                    col += 1
 
     def parseFenToPieceType(self, symbol):
         switcher = {
