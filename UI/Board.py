@@ -55,6 +55,9 @@ class Board(QWidget):
                 print("Move is legal")
                 self.board.push(move)
                 self.board.set_fen(self.board.fen())
+                if self.pieces[new_x][new_y]:
+                    self.pieces[new_x][new_y].hide()
+                    self.pieces[new_x][new_y] = None
                 self.pieces[old_x][old_y] = None
                 self.pieces[new_x][new_y] = piece
                 piece.setGeometry(self.cells[new_x][new_y].geometry())
