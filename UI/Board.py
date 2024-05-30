@@ -1,6 +1,8 @@
 from PyQt5.QtWidgets import QWidget, QLabel
 from PyQt5.QtCore import Qt, QPoint
 import chess
+
+from AI.ChessBot import ChessBot
 from UI.Piece import Piece, PieceType
 
 
@@ -12,6 +14,7 @@ class Board(QWidget):
         self.initCells()
         self.addNumeration()
         self.board = chess.Board()
+        self.ai = ChessBot(self.board)
         self.setStartPosition()
         self.oldPos = QPoint(0, 0)
 
@@ -36,41 +39,62 @@ class Board(QWidget):
         return piece
 
     def handleMove(self, piece):
-        old_x = (self.oldPos.x())
-        old_y = (self.oldPos.y())
-        new_x = (piece.pos().x() + 50) // 100
-        new_y = (piece.pos().y() + 50) // 100
-        print("old_x = ",old_x)
-        print("old_y = ",old_y)
-        print("new_x = ", new_x)
-        print("new_y = ", new_y)
+        try:
+            old_x = (self.oldPos.x())
+            old_y = (self.oldPos.y())
+            new_x = (piece.pos().x() + 50) // 100
+            new_y = (piece.pos().y() + 50) // 100
+            print("old_x = ",old_x)
+            print("old_y = ",old_y)
+            print("new_x = ", new_x)
+            print("new_y = ", new_y)
 
-        if old_x != new_x or old_y != new_y:
-            move = chess.Move(
-                chess.square(old_x, 7 - old_y),
-                chess.square(new_x, 7 - new_y)
-            )
-            print(f"Attempting move: {move}")
-            if move in self.board.legal_moves:
-                print("Move is legal")
-                self.board.push(move)
-                self.board.set_fen(self.board.fen())
-                if self.pieces[new_x][new_y]:
-                    self.pieces[new_x][new_y].hide()
-                    self.pieces[new_x][new_y] = None
-                self.pieces[old_x][old_y] = None
-                self.pieces[new_x][new_y] = piece
-                piece.setGeometry(self.cells[new_x][new_y].geometry())
-            else:
-                print("Move is illegal")
-                piece.setGeometry(self.cells[old_x][old_y].geometry())
+            if old_x != new_x or old_y != new_y:
+                move = chess.Move(
+                    chess.square(old_x, 7 - old_y),
+                    chess.square(new_x, 7 - new_y)
+                )
+                print(f"Attempting move: {move}")
+                if move in self.board.legal_moves:
+                    print("Move is legal")
+                    self.board.push(move)
+                    self.board.set_fen(self.board.fen())
+                    if self.pieces[new_x][new_y]:
+                        self.pieces[new_x][new_y].hide()
+                        self.pieces[new_x][new_y] = None
+                    self.pieces[old_x][old_y] = None
+                    self.pieces[new_x][new_y] = piece
+                    piece.setGeometry(self.cells[new_x][new_y].geometry())
+                else:
+                    print("Move is illegal")
+                    piece.setGeometry(self.cells[old_x][old_y].geometry())
 
-        self.clearHighlights()
-        print(f"Piece clicked: {piece.type} at ({old_x}, {old_y})")
-        print(f"Piece moved: {piece.type} to ({new_x}, {new_y})")
 
-        print("Current board state:")
-        print(self.board)
+            print(f"Piece clicked: {piece.type} at ({old_x}, {old_y})")
+            print(f"Piece moved: {piece.type} to ({new_x}, {new_y})")
+
+            best_move = self.ai.getBestMove(self.board, 3)
+            if best_move:
+                self.board.push(best_move)
+                from_square = best_move.from_square
+                to_square = best_move.to_square
+                print(f"AI move from {from_square} to {to_square}")
+                piece = self.pieces[chess.square_file(from_square)][7 - chess.square_rank(from_square)]
+                if piece is None:
+                    print("Error: No piece found at AI's from_square")
+                    return
+                self.pieces[chess.square_file(from_square)][7 - chess.square_rank(from_square)] = None
+                self.pieces[chess.square_file(to_square)][7 - chess.square_rank(to_square)] = piece
+                piece.setGeometry(self.cells[chess.square_file(to_square)][7 - chess.square_rank(to_square)].geometry())
+                print(f"AI moved: {best_move}")
+
+            self.clearHighlights()
+
+            print("Current board state:")
+            print(self.board)
+
+        except Exception as e:
+            print(f"An error occurred during move handling: {e}")
 
     def showPossibleMoves(self, piece):
         self.clearHighlights()
