@@ -13,7 +13,7 @@ class Board(QWidget):
         self.pieces = [[None for _ in range(8)] for _ in range(8)]
         self.initCells()
         self.addNumeration()
-        self.board = chess.Board()
+        self.board = chess.Board(chess960=True)
         self.ai = ChessBot(self.board)
         self.setStartPosition()
         self.oldPos = QPoint(0, 0)
@@ -128,7 +128,7 @@ class Board(QWidget):
                     self.cells[i][j].setStyleSheet("background-color: rgb(64, 64, 64)")
 
     def parseFen(self, fen):
-        fen_rows = fen.split("/")
+        fen_rows = fen.split(" ")[0].split("/")
         for row in range(8):
             col = 0
             for char in fen_rows[row]:
@@ -179,6 +179,6 @@ class Board(QWidget):
             label_column.setFont(font)
 
     def setStartPosition(self):
-        startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+        startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         self.board.set_fen(startFen)
         self.parseFen(startFen)

@@ -10,12 +10,16 @@ class ChessBot:
     def evaluateBoard(self, board):
         material_score = self.calculateMaterial(board)
         mobility_score = self.calculateMobility(board)
+        connected_pawn_score = self.calculateConnectedPawn(board)
+        crashed_castling_score = self.calculateCrashedCastling(board)
+        two_bishops_score = self.calculateTwoBishops(board)
 
-        total_score = material_score + mobility_score
+        total_score = (material_score + mobility_score + connected_pawn_score
+                       + crashed_castling_score + two_bishops_score)
         return total_score
 
-# Материал показывает количество фигур
-# возвращается разница в материале между белыми и чёрными
+    # Материал показывает количество фигур
+    # возвращается разница в материале между белыми и чёрными
     def calculateMaterial(self, board):
         material_values = {
             chess.PAWN: 100,
@@ -31,8 +35,8 @@ class ChessBot:
             material_score -= value * len(board.pieces(piece_type, chess.BLACK))
         return material_score
 
-# Чем больше развиты фигуры (то есть чем больше полей они бьют), тем лучше
-# тип фигуры оценивается по количеству атакуемых клеток, и это значение добавляется к общей оценке мобильности
+    # Чем больше развиты фигуры (то есть чем больше полей они бьют), тем лучше
+    # тип фигуры оценивается по количеству атакуемых клеток, и это значение добавляется к общей оценке мобильности
     def calculateMobility(self, piece):
         mobility_values = {
             chess.KNIGHT: 9,
@@ -47,6 +51,58 @@ class ChessBot:
             for square in self.board.pieces(piece_type, chess.BLACK):
                 mobility_score -= value * len(self.board.attacks(square))
         return mobility_score
+
+    def isConnectedPawn(self, board, square, color):
+        adjacent_files = [chess.square_file(square) - 1, chess.square_file(square) + 1]
+        for file in adjacent_files:
+            if 0 <= file <= 8:
+                for rank in range(8):
+                    adjacent_square = chess.square(file, rank)
+                    if board.piece_at(adjacent_square) == chess.Piece(chess.PAWN, color):
+                        return True
+        return False
+
+    # Соединенная пешка - пешка, защищенная другой
+    # Наличие таких пешек является одним из признаков хорошей пешечной структуры
+    # Улучшает оценку на 12
+    def calculateConnectedPawn(self, board):
+        connected_pawn_score = 0
+        for square in chess.SQUARES:
+            if board.piece_at(square) == chess.Piece(chess.PAWN, chess.WHITE):
+                if self.isConnectedPawn(board, square, chess.WHITE):
+                    connected_pawn_score += 12
+            elif board.piece_at(square) == chess.Piece(chess.PAWN, chess.BLACK):
+                if self.isConnectedPawn(board, square, chess.BLACK):
+                    connected_pawn_score -= 12
+        return connected_pawn_score
+
+    # Если король потерял рокировку не рокировавшись, то это считается серьезной слабостью для безопасности короля.
+    # ухудшает свою оценку на 50 за каждую потерянную рокировку:
+    def calculateCrashedCastling(self, board):
+        crashed_castling_score = 0
+        white_king_square = board.king(chess.WHITE)
+        black_king_square = board.king(chess.BLACK)
+        if white_king_square is not None and white_king_square != chess.E1:
+            if not board.has_kingside_castling_rights(chess.WHITE):
+                crashed_castling_score -= 50
+            if not board.has_queenside_castling_rights(chess.WHITE):
+                crashed_castling_score -= 50
+        if black_king_square is not None and black_king_square != chess.E8:
+            if not board.has_kingside_castling_rights(chess.BLACK):
+                crashed_castling_score += 50
+            if not board.has_queenside_castling_rights(chess.BLACK):
+                crashed_castling_score += 50
+        return crashed_castling_score
+
+    # Два слона вместе могут отрезать пешки или короля.
+    # улучшают оценку на 50
+    def calculateTwoBishops(self, board):
+        two_bishops_score = 0
+        if len(board.pieces(chess.BISHOP, chess.WHITE)) >= 2:
+            two_bishops_score += 50
+        if len(board.pieces(chess.BISHOP, chess.BLACK)) >= 2:
+            two_bishops_score -= 50
+        return two_bishops_score
 
 
     def minimax(self, board, depth, alpha, beta, maximizing_player):
