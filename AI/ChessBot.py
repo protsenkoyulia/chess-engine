@@ -11,11 +11,14 @@ class ChessBot:
         material_score = self.calculateMaterial(board)
         mobility_score = self.calculateMobility(board)
         connected_pawn_score = self.calculateConnectedPawn(board)
+        double_pawn_score = self.calculateDoublePawn(board)
         crashed_castling_score = self.calculateCrashedCastling(board)
         two_bishops_score = self.calculateTwoBishops(board)
+        endgame_score = self.calculateEndgame(board)
 
         total_score = (material_score + mobility_score + connected_pawn_score
-                       + crashed_castling_score + two_bishops_score)
+                       + double_pawn_score + crashed_castling_score + two_bishops_score
+                       + endgame_score)
         return total_score
 
     # Материал показывает количество фигур
@@ -55,7 +58,7 @@ class ChessBot:
     def isConnectedPawn(self, board, square, color):
         adjacent_files = [chess.square_file(square) - 1, chess.square_file(square) + 1]
         for file in adjacent_files:
-            if 0 <= file <= 8:
+            if 0 <= file <= 7:
                 for rank in range(8):
                     adjacent_square = chess.square(file, rank)
                     if board.piece_at(adjacent_square) == chess.Piece(chess.PAWN, color):
@@ -75,6 +78,22 @@ class ChessBot:
                 if self.isConnectedPawn(board, square, chess.BLACK):
                     connected_pawn_score -= 12
         return connected_pawn_score
+
+    # Сдвоенные пешки обладают меньшей подвижностью, они больше подвержены нападению неприятельских фигур
+    # Ухудшает оценку на 25
+    def calculateDoublePawn(self,board):
+        double_pawn_score = 0
+        for file in range(8):
+            white_pawn_in_file = sum(
+                1 for square in range(file, 64, 8) if board.piece_at(square) == chess.Piece(chess.PAWN, chess.WHITE))
+            black_pawn_in_file = sum(
+                1 for square in range(file, 64, 8) if board.piece_at(square) == chess.Piece(chess.PAWN, chess.BLACK))
+            if white_pawn_in_file > 1:
+                double_pawn_score -= 25 * (white_pawn_in_file - 1)
+            if black_pawn_in_file > 1:
+                double_pawn_score += 25 * (black_pawn_in_file - 1)
+
+            return double_pawn_score
 
     # Если король потерял рокировку не рокировавшись, то это считается серьезной слабостью для безопасности короля.
     # ухудшает свою оценку на 50 за каждую потерянную рокировку:
@@ -104,6 +123,61 @@ class ChessBot:
             two_bishops_score -= 50
         return two_bishops_score
 
+    # Оценка для эндшпиля. Она учитывает близость короля побеждающей стороны к королю проигрывающей,
+    # а также расстояние проигрывающего короля от центра
+    # Эндшпиль - когда оставется менее 9 фигур
+    def calculateEndgame(self, board):
+        MaximumPiecesForEndgame = 8
+        AttackerKingProximityToDefenderKing = 10
+        DistanceBetweenDefenderKingAndMiddle = 10
+
+        endgame_score = 0
+        pieces_count = sum(
+            len(board.pieces(piece_type, chess.WHITE)) + len(board.pieces(piece_type, chess.BLACK)) for piece_type in
+            chess.PIECE_TYPES)
+
+        if pieces_count > MaximumPiecesForEndgame:
+            return endgame_score
+
+        white_material = self.calculateMaterial(board) > 0
+        black_material = self.calculateMaterial(board) < 0
+        white_leading = white_material and not black_material
+        black_leading = black_material and not white_material
+
+        if white_leading:
+            attacker_king_square = board.king(chess.WHITE)
+            defender_king_square = board.king(chess.BLACK)
+        elif black_leading:
+            attacker_king_square = board.king(chess.BLACK)
+            defender_king_square = board.king(chess.WHITE)
+        else:
+            return endgame_score
+
+        attacker_king_x, attacker_king_y = chess.square_file(attacker_king_square), chess.square_rank(
+            attacker_king_square)
+        defender_king_x, defender_king_y = chess.square_file(defender_king_square), chess.square_rank(
+            defender_king_square)
+
+        proximity = 16 - (abs(attacker_king_x - defender_king_x) + abs(attacker_king_y - defender_king_y))
+        distance_to_center = abs(defender_king_x - 3) + abs(defender_king_y - 4)
+
+        endgame_score += AttackerKingProximityToDefenderKing * proximity
+        endgame_score += DistanceBetweenDefenderKingAndMiddle * distance_to_center
+
+        if black_leading:
+            endgame_score = -endgame_score
+
+        return endgame_score
+
+    def orderMoves(self, board, moves):
+        captures = []
+        non_captures = []
+        for move in moves:
+            if board.is_capture(move):
+                captures.append(move)
+            else:
+                non_captures.append(move)
+        return captures + non_captures
 
     def minimax(self, board, depth, alpha, beta, maximizing_player):
         if depth == 0 or board.is_game_over():
@@ -111,7 +185,8 @@ class ChessBot:
 
         if maximizing_player:
             max_eval = -math.inf
-            for move in board.legal_moves:
+            moves = self.orderMoves(board, list(board.legal_moves))
+            for move in moves:
                 board.push(move)
                 eval = self.minimax(board, depth - 1, alpha, beta, False)
                 board.pop()
@@ -122,7 +197,8 @@ class ChessBot:
             return max_eval
         else:
             min_eval = math.inf
-            for move in board.legal_moves:
+            moves = self.orderMoves(board, list(board.legal_moves))
+            for move in moves:
                 board.push(move)
                 eval = self.minimax(board, depth - 1, alpha, beta, True)
                 board.pop()
