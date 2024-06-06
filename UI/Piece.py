@@ -17,8 +17,8 @@ class PieceType:
     BLACK_PAWN = 11
 
 class Piece(QWidget):
-    doMove = pyqtSignal(QWidget)
-    pieceClicked = pyqtSignal(QWidget)
+    on_piece_move = pyqtSignal(QWidget)
+    on_piece_pressed = pyqtSignal(QWidget)
 
     def __init__(self, piece_type, parent=None):
         super().__init__(parent)
@@ -57,7 +57,7 @@ class Piece(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.oldPos = event.pos()
-            self.pieceClicked.emit(self)
+            self.on_piece_pressed.emit(self)
             print(f"Piece clicked: {self.type}")
 
     def mouseMoveEvent(self, event):
@@ -68,5 +68,5 @@ class Piece(QWidget):
         new_x = (self.pos().x() + 50) // 100
         new_y = (self.pos().y() + 50) // 100
         self.move(new_x * 100, new_y * 100)
-        self.doMove.emit(self)
+        self.on_piece_move.emit(self)
         print(f"Piece moved: {self.type}")
