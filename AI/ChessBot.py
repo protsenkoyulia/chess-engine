@@ -229,7 +229,7 @@ class ChessBot(QObject):
                 board.pop()
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
-                if beta < alpha:
+                if beta <= alpha:
                     break
             return max_eval
         else:
@@ -241,18 +241,26 @@ class ChessBot(QObject):
                 board.pop()
                 min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
-                if beta < alpha:
+                if beta <= alpha:
                     break
             return min_eval
 
     def getBestMove(self, board, depth):
         best_move = None
-        best_value = -math.inf
+        best_value = -math.inf if self.color == chess.WHITE else math.inf
+        maximizing_player = (self.color == chess.WHITE)
+
         for move in board.legal_moves:
             board.push(move)
-            board_value = self.minimax(board, depth - 1, -math.inf, math.inf, False)
+            board_value = self.minimax(board, depth - 1, -math.inf, math.inf, not maximizing_player)
             board.pop()
-            if board_value > best_value:
+
+            if maximizing_player and board_value > best_value:
                 best_value = board_value
                 best_move = move
+            elif not maximizing_player and board_value < best_value:
+                best_value = board_value
+                best_move = move
+
         return best_move
+
