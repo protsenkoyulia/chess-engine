@@ -106,19 +106,21 @@ class ChessBot(QObject):
     # Наличие таких пешек является одним из признаков хорошей пешечной структуры
     # Улучшает оценку на 12
     def calculateConnectedPawn(self, board):
+        connected_pawn_value = 12
         connected_pawn_score = 0
         for square in chess.SQUARES:
             if board.piece_at(square) == chess.Piece(chess.PAWN, chess.WHITE):
                 if self.isConnectedPawn(board, square, chess.WHITE):
-                    connected_pawn_score += 12
+                    connected_pawn_score += connected_pawn_value
             elif board.piece_at(square) == chess.Piece(chess.PAWN, chess.BLACK):
                 if self.isConnectedPawn(board, square, chess.BLACK):
-                    connected_pawn_score -= 12
+                    connected_pawn_score -= connected_pawn_value
         return connected_pawn_score
 
     # Сдвоенные пешки обладают меньшей подвижностью, они больше подвержены нападению неприятельских фигур
     # Ухудшает оценку на 25
     def calculateDoublePawn(self, board):
+        double_pawn_value = 25
         double_pawn_score = 0
         for file in range(8):
             white_pawn_in_file = sum(
@@ -126,38 +128,40 @@ class ChessBot(QObject):
             black_pawn_in_file = sum(
                 1 for square in range(file, 64, 8) if board.piece_at(square) == chess.Piece(chess.PAWN, chess.BLACK))
             if white_pawn_in_file > 1:
-                double_pawn_score -= 25 * (white_pawn_in_file - 1)
+                double_pawn_score -= double_pawn_value * (white_pawn_in_file - 1)
             if black_pawn_in_file > 1:
-                double_pawn_score += 25 * (black_pawn_in_file - 1)
+                double_pawn_score += double_pawn_value * (black_pawn_in_file - 1)
 
             return double_pawn_score
 
     # Если король потерял рокировку не рокировавшись, то это считается серьезной слабостью для безопасности короля.
     # ухудшает свою оценку на 50 за каждую потерянную рокировку:
     def calculateCrashedCastling(self, board):
+        crashed_castling_value = 50
         crashed_castling_score = 0
         white_king_square = board.king(chess.WHITE)
         black_king_square = board.king(chess.BLACK)
         if white_king_square is not None and white_king_square != chess.E1:
             if not board.has_kingside_castling_rights(chess.WHITE):
-                crashed_castling_score -= 50
+                crashed_castling_score -= crashed_castling_value
             if not board.has_queenside_castling_rights(chess.WHITE):
-                crashed_castling_score -= 50
+                crashed_castling_score -= crashed_castling_value
         if black_king_square is not None and black_king_square != chess.E8:
             if not board.has_kingside_castling_rights(chess.BLACK):
-                crashed_castling_score += 50
+                crashed_castling_score += crashed_castling_value
             if not board.has_queenside_castling_rights(chess.BLACK):
-                crashed_castling_score += 50
+                crashed_castling_score += crashed_castling_value
         return crashed_castling_score
 
     # Два слона вместе могут отрезать пешки или короля.
     # улучшают оценку на 50
     def calculateTwoBishops(self, board):
+        bishops_value = 50
         two_bishops_score = 0
         if len(board.pieces(chess.BISHOP, chess.WHITE)) >= 2:
-            two_bishops_score += 50
+            two_bishops_score += bishops_value
         if len(board.pieces(chess.BISHOP, chess.BLACK)) >= 2:
-            two_bishops_score -= 50
+            two_bishops_score -= bishops_value
         return two_bishops_score
 
     # Оценка для эндшпиля. Она учитывает близость короля побеждающей стороны к королю проигрывающей,
