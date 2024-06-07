@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QWidget, QLabel
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal
 from PyQt5.QtGui import QFont
 
+
 class PieceType:
     WHITE_KING = 0
     WHITE_QUEEN = 1
@@ -15,6 +16,7 @@ class PieceType:
     BLACK_BISHOP = 9
     BLACK_KNIGHT = 10
     BLACK_PAWN = 11
+
 
 class Piece(QWidget):
     on_piece_move = pyqtSignal(QWidget)
@@ -58,7 +60,6 @@ class Piece(QWidget):
         if event.button() == Qt.LeftButton:
             self.oldPos = event.pos()
             self.on_piece_pressed.emit(self)
-            print(f"Piece clicked: {self.type}")
 
     def mouseMoveEvent(self, event):
         delta = event.pos() - self.oldPos
@@ -69,4 +70,3 @@ class Piece(QWidget):
         new_y = (self.pos().y() + 50) // 100
         self.move(new_x * 100, new_y * 100)
         self.on_piece_move.emit(self)
-        print(f"Piece moved: {self.type}")

@@ -2,6 +2,7 @@ import chess
 from PyQt5.QtCore import Qt, QPoint, QRect
 from PyQt5.QtWidgets import QWidget, QLabel, QScrollArea, QVBoxLayout
 
+from UI.ChoseChangePiece import ChoseChangePiece
 from UI.GameEndWidget import GameEndWidget
 from UI.Piece import Piece, PieceType
 
@@ -16,6 +17,8 @@ class Board(QWidget):
         self.pieces = [[None for _ in range(8)] for _ in range(8)]
         self.end_widget = GameEndWidget()
         self.board = chessBoard
+
+        self.chose_piece_popup = ChoseChangePiece()
 
         self.initCells()
         self.addNumeration()
@@ -55,13 +58,22 @@ class Board(QWidget):
     def handleMove(self, piece):
         old_x = (self.oldPos.x())
         old_y = (self.oldPos.y())
-        new_x = (piece.pos().x() + 50) // 100
-        new_y = (piece.pos().y() + 50) // 100
+        new_x = (piece.pos().x()) // 100
+        new_y = (piece.pos().y()) // 100
 
         if old_x != new_x or old_y != new_y:
             print(f"old_x = {old_x} old_y = {old_y} --> new_x = {new_x} new_y = {new_y}")
 
-            self.board.do_move(chess.Move(chess.square(old_x, 7 - old_y), chess.square(new_x, 7 - new_y)))
+            move = chess.Move(chess.square(old_x, 7 - old_y), chess.square(new_x, 7 - new_y))
+
+            if new_y == 0 and piece.type == PieceType.WHITE_PAWN:
+                self.chose_piece_popup.show()
+                self.chose_piece_popup.chose.connect(lambda chose: self.doMoveWithChose(chose, move))
+            else:
+                self.board.do_move(move)
+
+    def doMoveWithChose(self, chose, move):
+        self.board.do_move(chess.Move.from_uci(move.uci() + chose))
 
     def showPossibleMoves(self, piece):
         self.clear_highlights()
@@ -69,7 +81,6 @@ class Board(QWidget):
         self.oldPos = QPoint(piece_position[0], piece_position[1])
         square = chess.square(piece_position[0], 7 - piece_position[1])
         legal_moves = self.board.get_possible_move()
-        print(f"Showing moves for piece at {piece_position} (square: {square}) of type {piece.type}")
         possible_moves_found = False
         for move in legal_moves:
             if move.from_square == square:
@@ -77,7 +88,6 @@ class Board(QWidget):
                 row = chess.square_file(to_square)
                 column = 7 - chess.square_rank(to_square)
                 self.highlight_cell(row, column)
-                print(f"Possible move to: ({row}, {column})")
                 possible_moves_found = True
         if not possible_moves_found:
             print("No possible moves found")

@@ -12,7 +12,7 @@ class QChessBoard(QObject):
         super().__init__()
 
         self.is_white_move = True
-        self.board = chess.Board(chess960=True)
+        self.board = chess.Board()
 
     def reset(self):
         self.board.reset()

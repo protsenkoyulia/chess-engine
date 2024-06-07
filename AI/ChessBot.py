@@ -1,11 +1,48 @@
-import chess
-import chess.engine
 import math
 
+import chess
+import chess.engine
+from PyQt5.QtCore import *
 
-class ChessBot:
-    def __init__(self, board):
-        self.board = board
+
+class Worker(QObject):
+
+    def __init__(self, task):
+        super().__init__()
+        self.task = task
+
+    def start(self):
+        self.task()
+
+class ChessBot(QObject):
+    def __init__(self, q_chess_board, color, parent=None):
+        super().__init__(parent)
+
+        self.board = q_chess_board.get_chess_board()
+        self.q_board = q_chess_board
+        self.color = color
+
+        self.thread_worker = QThread()
+
+        self.worker = Worker(self.do_best_move)
+
+        self.worker.moveToThread(self.thread_worker)
+        self.thread_worker.started.connect(self.worker.start)
+        self.thread_worker.start()
+
+        self.canDoMove = False
+
+        q_chess_board.move_order.connect(self.on_change_move_order)
+
+    def on_change_move_order(self, move_order):
+        if move_order == self.color:
+            self.canDoMove = True
+
+    def do_best_move(self):
+        while True:
+            if self.canDoMove:
+                self.q_board.do_move(self.getBestMove(self.board, 3))
+                self.canDoMove = False
 
     def evaluateBoard(self, board):
         material_score = self.calculateMaterial(board)
@@ -81,7 +118,7 @@ class ChessBot:
 
     # Сдвоенные пешки обладают меньшей подвижностью, они больше подвержены нападению неприятельских фигур
     # Ухудшает оценку на 25
-    def calculateDoublePawn(self,board):
+    def calculateDoublePawn(self, board):
         double_pawn_score = 0
         for file in range(8):
             white_pawn_in_file = sum(
@@ -192,7 +229,7 @@ class ChessBot:
                 board.pop()
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
-                if beta <= alpha:
+                if beta < alpha:
                     break
             return max_eval
         else:
@@ -204,7 +241,7 @@ class ChessBot:
                 board.pop()
                 min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
-                if beta <= alpha:
+                if beta < alpha:
                     break
             return min_eval
 
