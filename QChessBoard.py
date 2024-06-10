@@ -4,7 +4,7 @@ from PyQt5.QtCore import *
 
 class QChessBoard(QObject):
     update = pyqtSignal()
-    made_move = pyqtSignal(chess.Move)
+    made_move = pyqtSignal(chess.Move, bool)
     move_order = pyqtSignal(bool)
     game_over = pyqtSignal(bool)
 
@@ -13,6 +13,8 @@ class QChessBoard(QObject):
 
         self.is_white_move = True
         self.board = chess.Board()
+
+
 
     def reset(self):
         self.board.reset()
@@ -23,8 +25,8 @@ class QChessBoard(QObject):
     def do_move(self, move):
         if self.is_valid_move(move):
             self.board.push(move)
+            self.made_move.emit(move, self.is_white_move)
             self.is_white_move = not self.is_white_move
-            self.made_move.emit(move)
 
         self.update.emit()
 

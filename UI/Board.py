@@ -11,6 +11,8 @@ class Board(QWidget):
     def __init__(self, chessBoard, parent=None):
         super().__init__(parent)
 
+        self.move_history = None
+        self.move_order_label = None
         self.setWindowTitle("Шахматы")
 
         self.cells = [[None for _ in range(8)] for _ in range(8)]
@@ -33,6 +35,8 @@ class Board(QWidget):
             lambda is_white: self.end_widget.show("Белые выиграли!" if is_white else "Черные выиграли!"))
 
         self.oldPos = QPoint(0, 0)
+
+        self.board.move_order.emit(True)
 
     def createCell(self, row, column):
         cell = QWidget(self)
@@ -203,11 +207,10 @@ class Board(QWidget):
 
         self.board.made_move.connect(self.add_move_into_history)
 
-    def add_move_into_history(self, move):
-        stretch = self.move_history.itemAt(self.move_history.count() - 1)
-        self.move_history.removeItem(stretch)
-        self.move_history.addWidget(QLabel(f'{move.uci()}'))
         self.move_history.addStretch()
+
+    def add_move_into_history(self, move, is_white):
+        self.move_history.addWidget(QLabel(f'{self.move_history.count()}) {move.uci()} - {"Белые" if is_white else "Черные"}'))
 
     def init_move_order(self):
         self.move_order_label = QLabel("Б", self)

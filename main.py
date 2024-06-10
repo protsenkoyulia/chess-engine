@@ -11,7 +11,8 @@ if __name__ == "__main__":
 
     board = QChessBoard()
 
-    AI = ChessBot(board, False)
+    AI_BLACK = ChessBot(board, False)
+    # AI_WHITE = ChessBot(board, True)
 
     board = Board(board)
     board.show()

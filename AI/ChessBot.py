@@ -14,6 +14,7 @@ class Worker(QObject):
     def start(self):
         self.task()
 
+
 class ChessBot(QObject):
     def __init__(self, q_chess_board, color, parent=None):
         super().__init__(parent)
@@ -30,19 +31,18 @@ class ChessBot(QObject):
         self.thread_worker.started.connect(self.worker.start)
         self.thread_worker.start()
 
-        self.canDoMove = False
+        self.sem = QSemaphore()
 
         q_chess_board.move_order.connect(self.on_change_move_order)
 
     def on_change_move_order(self, move_order):
         if move_order == self.color:
-            self.canDoMove = True
+            self.sem.release()
 
     def do_best_move(self):
         while True:
-            if self.canDoMove:
-                self.q_board.do_move(self.getBestMove(self.board, 3))
-                self.canDoMove = False
+            self.sem.acquire()
+            self.q_board.do_move(self.getBestMove(self.board, 2))
 
     def evaluateBoard(self, board):
         material_score = self.calculateMaterial(board)
@@ -267,4 +267,3 @@ class ChessBot(QObject):
                 best_move = move
 
         return best_move
-
